@@ -207,13 +207,34 @@ async function getFeishuData() {
       const longitude = parseFloat(getFieldText(fields['longitude']));
       const latitude = parseFloat(getFieldText(fields['latitude']));
       
+      // 🔍 详细调试"minggu ini service by"字段
+      console.log(`\n🔍 === 记录详情分析: ${outletCode} ===`);
+      console.log(`📋 原始字段数据:`, JSON.stringify(fields['Minggu ini Service by'], null, 2));
+      console.log(`🎯 处理后的值: "${mingguIniServiceBy}"`);
+      console.log(`📏 字符串长度: ${mingguIniServiceBy.length}`);
+      console.log(`🔤 字符串类型: ${typeof mingguIniServiceBy}`);
+      
+      // 检查是否为空或只包含空白字符
+      if (!mingguIniServiceBy || mingguIniServiceBy.trim() === '') {
+        console.log(`⚠️ 警告: "minggu ini service by"字段为空!`);
+        console.log(`🔍 检查其他可能的字段名:`);
+        const possibleFields = ['PIC', 'Service by', 'Minggu Service by', 'Service Person', 'Petugas'];
+        possibleFields.forEach(fieldName => {
+          if (fields[fieldName]) {
+            console.log(`  - 找到字段 "${fieldName}": ${JSON.stringify(fields[fieldName])}`);
+          }
+        });
+      } else {
+        console.log(`✅ "minggu ini service by"字段有值: "${mingguIniServiceBy}"`);
+      }
+      
       // 详细调试输出
-      console.log(`🔍 记录详情: ${outletCode}`);
       console.log(`  - 经纬度: lat=${latitude}, lng=${longitude}`);
       console.log(`  - 店主: ${namaPemilik}, 服务人员: ${mingguIniServiceBy}`);
       console.log(`  - 电话: ${noTeleponPemilik}, 状态: ${outletStatus}`);
       console.log(`  - 冰柜日期: ${tanggalTurunFreezer}, 访问: ${visit}`);
       console.log(`  - PO: ${po}, 倒冰: ${buangEs}`);
+      console.log(`=== 记录分析结束 ===\n`);
       
       // 如果经纬度无效，跳过此记录
       if (isNaN(latitude) || isNaN(longitude) || latitude === 0 || longitude === 0) {
@@ -627,38 +648,119 @@ app.get('/debug-all-fields', async (req, res) => {
     
     console.log('🔍 获取字段列表...');
     
-    // 获取第一条记录查看所有字段
+    // 获取第一页数据来查看字段结构
     const url = `https://open.feishu.cn/open-apis/bitable/v1/apps/${FEISHU_APP_TOKEN}/tables/${FEISHU_TABLE_ID}/records`;
     const response = await axios.get(url, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      params: { page_size: 1 }
+      params: {
+        page_size: 10 // 获取10条记录用于调试
+      },
+      timeout: 15000
     });
 
     if (response.data.code === 0) {
       const records = response.data.data.items || [];
-      if (records.length > 0) {
-        const firstRecord = records[0];
-        const fieldNames = Object.keys(firstRecord.fields);
-        
-        console.log('📋 所有可用字段名称:');
-        fieldNames.forEach((fieldName, index) => {
-          console.log(`  ${index + 1}. "${fieldName}" = "${firstRecord.fields[fieldName]}"`);
-        });
-        
-        res.json({
-          success: true,
-          totalFields: fieldNames.length,
-          fieldNames: fieldNames,
-          sampleRecord: firstRecord.fields
-        });
-      } else {
-        res.json({ success: false, message: '没有找到记录' });
+      
+      // 辅助函数：提取飞书字段的文本值
+      function getFieldText(field) {
+        if (!field) return '';
+        if (Array.isArray(field) && field.length > 0 && field[0].text) {
+          return field[0].text;
+        }
+        if (typeof field === 'string') return field;
+        if (typeof field === 'number') return field.toString();
+        return '';
       }
+      
+      const debugInfo = {
+        total_records: records.length,
+        api_response_structure: {
+          code: response.data.code,
+          msg: response.data.msg,
+          has_more: response.data.data.has_more
+        },
+        field_analysis: records.map((record, index) => {
+          const fields = record.fields;
+          const mingguIniServiceByRaw = fields['Minggu ini Service by'];
+          const mingguIniServiceByProcessed = getFieldText(mingguIniServiceByRaw);
+          
+          return {
+            record_index: index,
+            outlet_code: getFieldText(fields['Outlet Code']),
+            record_id: record.record_id,
+            all_available_fields: Object.keys(fields).sort(),
+            minggu_ini_service_by_analysis: {
+              field_exists: 'Minggu ini Service by' in fields,
+              raw_data: mingguIniServiceByRaw,
+              raw_data_type: typeof mingguIniServiceByRaw,
+              processed_value: mingguIniServiceByProcessed,
+              processed_length: mingguIniServiceByProcessed.length,
+              is_empty: !mingguIniServiceByProcessed || mingguIniServiceByProcessed.trim() === ''
+            },
+            alternative_service_fields: {
+              'PIC': {
+                exists: 'PIC' in fields,
+                raw: fields['PIC'],
+                processed: getFieldText(fields['PIC'])
+              },
+              'Service by': {
+                exists: 'Service by' in fields,
+                raw: fields['Service by'],
+                processed: getFieldText(fields['Service by'])
+              },
+              'Minggu Service by': {
+                exists: 'Minggu Service by' in fields,
+                raw: fields['Minggu Service by'],
+                processed: getFieldText(fields['Minggu Service by'])
+              },
+              'Service Person': {
+                exists: 'Service Person' in fields,
+                raw: fields['Service Person'],
+                processed: getFieldText(fields['Service Person'])
+              },
+              'Petugas': {
+                exists: 'Petugas' in fields,
+                raw: fields['Petugas'],
+                processed: getFieldText(fields['Petugas'])
+              }
+            },
+            sample_other_fields: {
+              'Nama Pemilik': getFieldText(fields['Nama Pemilik']),
+              'Outlet Status': getFieldText(fields['Outlet Status']),
+              'Tanggal Turun Freezer': getFieldText(fields['Tanggal Turun Freezer'])
+            }
+          };
+        })
+      };
+      
+      // 在服务器日志中也输出详细信息
+      console.log('\n🔍 === DEBUG ALL FIELDS 调试信息 ===');
+      console.log('📊 总记录数:', debugInfo.total_records);
+      console.log('📋 所有可用字段:', debugInfo.field_analysis[0]?.all_available_fields || []);
+      
+      debugInfo.field_analysis.forEach((record, index) => {
+        console.log(`\n📝 记录 ${index + 1} (${record.outlet_code}):`);
+        console.log('  🎯 Minggu ini Service by 分析:');
+        console.log('    - 字段存在:', record.minggu_ini_service_by_analysis.field_exists);
+        console.log('    - 原始数据:', JSON.stringify(record.minggu_ini_service_by_analysis.raw_data));
+        console.log('    - 处理后值:', `"${record.minggu_ini_service_by_analysis.processed_value}"`);
+        console.log('    - 是否为空:', record.minggu_ini_service_by_analysis.is_empty);
+        
+        console.log('  🔍 替代字段检查:');
+        Object.entries(record.alternative_service_fields).forEach(([fieldName, fieldInfo]) => {
+          if (fieldInfo.exists && fieldInfo.processed) {
+            console.log(`    - ${fieldName}: "${fieldInfo.processed}"`);
+          }
+        });
+      });
+      console.log('=== DEBUG 结束 ===\n');
+      
+      res.json(debugInfo);
     } else {
-      res.json({ success: false, message: '获取数据失败', error: response.data });
+      res.status(500).json({ error: `飞书API错误: ${response.data.msg}` });
     }
   } catch (error) {
     console.error('❌ 获取字段列表失败:', error.message);
