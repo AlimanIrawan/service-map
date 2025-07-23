@@ -352,12 +352,12 @@ function App() {
       setError(null);
       
       // 优先从GitHub读取CSV数据，失败时使用后端API
-      const githubUrl = 'https://raw.githubusercontent.com/AlimanIrawan/jakarta-freezer-delivery-map/main/public/markers.csv';
+      const githubUrl = 'https://raw.githubusercontent.com/AlimanIrawan/service-map/main/public/markers.csv';
       let response = await fetch(githubUrl);
       
       if (!response.ok) {
         console.log('GitHub文件不可用，使用后端API获取数据');
-        const apiUrl = process.env.REACT_APP_API_URL || 'https://jakarta-freezer-map-backend.onrender.com';
+        const apiUrl = process.env.REACT_APP_API_URL || 'https://service-map-c0ql.onrender.com';
         response = await fetch(`${apiUrl}/api/csv-data`);
         if (!response.ok) {
           throw new Error(`加载数据失败: ${response.status}`);
@@ -394,7 +394,7 @@ function App() {
     try {
       // 1. 调用后端API触发飞书数据同步
       console.log('🔄 开始手动同步飞书数据...');
-      const apiUrl = process.env.REACT_APP_API_URL || 'https://jakarta-freezer-map-backend.onrender.com';
+      const apiUrl = process.env.REACT_APP_API_URL || 'https://service-map-c0ql.onrender.com';
       const syncResponse = await fetch(`${apiUrl}/sync`, {
         method: 'POST',
         headers: {
