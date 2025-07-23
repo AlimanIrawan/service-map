@@ -209,7 +209,17 @@ async function getFeishuData() {
       // 验证和格式化日期
       if (dateValue) {
         try {
-          // 尝试解析日期
+          // 检查是否为Excel序列号格式（纯数字且大于1000）
+          const numValue = parseFloat(dateValue);
+          if (!isNaN(numValue) && numValue > 1000 && numValue < 100000) {
+            // Excel序列号转换为日期（Excel从1900年1月1日开始计算，但有闰年bug）
+            const excelEpoch = new Date(1900, 0, 1); // 1900年1月1日
+            const daysSinceEpoch = numValue - 2; // 减去2是因为Excel的1900年闰年bug
+            const resultDate = new Date(excelEpoch.getTime() + daysSinceEpoch * 24 * 60 * 60 * 1000);
+            return resultDate.toISOString().split('T')[0];
+          }
+          
+          // 尝试解析标准日期格式
           const parsedDate = new Date(dateValue);
           if (!isNaN(parsedDate.getTime())) {
             // 返回 YYYY-MM-DD 格式
