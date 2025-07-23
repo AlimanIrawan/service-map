@@ -242,7 +242,7 @@ async function getFeishuData() {
       const outletCode = getFieldText(fields['Outlet Code']);
       const namaPemilik = getFieldText(fields['Nama Pemilik']);
       const mingguIniServiceBy = getDateFieldText(fields['Hari Service Minggu Ini']);
-      const tanggalTurunFreezer = getFieldText(fields['Tanggal Turun Freezer']);
+      const tanggalTurunFreezer = getDateFieldText(fields['Tanggal Turun Freezer']);
       const noTeleponPemilik = getPhoneNumber(fields['No Telepon Pemilik']);
       const visit = getFieldText(fields['Visit']);
       const po = getFieldText(fields['PO']);
