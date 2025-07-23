@@ -1262,9 +1262,13 @@
 
 .color-circle.gray-warning {
   background-color: #6c757d;
-  position: relative;
 }
 
+.color-circle.red {
+  background-color: #dc3545;
+}
+
+/* 添加警告标记 */
 .color-circle.gray-warning::after {
   content: '!';
   position: absolute;
@@ -1272,6 +1276,6 @@
   left: 50%;
   transform: translate(-50%, -50%);
   color: red;
-  font-size: 6px;
   font-weight: bold;
-} 
+  font-size: 10px;
+}

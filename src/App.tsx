@@ -302,21 +302,35 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
   );
 };
 
-// 获取标记图标（根据新的业务逻辑）
+// 获取标记图标（根据日期分类逻辑）
 const getMarkerIcon = (marker: MarkerData) => {
-  const servicePerson = marker.mingguIniServiceBy;
+  const serviceDate = marker.mingguIniServiceBy;
   const needsService = marker.visit === 'Butuh Service!';
   
   let color = '#808080'; // 默认灰色
   
-  // 根据服务人员分配不同颜色
-  if (servicePerson && servicePerson.trim() !== '') {
-    if (servicePerson.includes('Liana Fauzia')) {
-      color = '#0066CC'; // 蓝色
-    } else if (servicePerson.includes('Niar Zela')) {
-      color = '#FF8800'; // 橙色
+  // 根据服务日期分配不同颜色
+  if (serviceDate && serviceDate.trim() !== '') {
+    // 解析日期并根据日期范围分配颜色
+    const dateStr = serviceDate.trim();
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const date = new Date(dateStr);
+      const today = new Date();
+      const diffTime = date.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays <= 0) {
+        color = '#dc3545'; // 红色 - 已过期或今天
+      } else if (diffDays <= 3) {
+        color = '#ffc107'; // 黄色 - 3天内
+      } else if (diffDays <= 7) {
+        color = '#0066CC'; // 蓝色 - 一周内
+      } else {
+        color = '#28a745'; // 绿色 - 一周后
+      }
+    } else {
+      color = '#FF8800'; // 橙色 - 非标准日期格式
     }
-    // 可以在这里添加更多服务人员的颜色映射
   }
   
   // 创建自定义图标
@@ -481,19 +495,69 @@ function App() {
 
   const currentLayerConfig = MAP_LAYERS[currentLayer];
 
-  // 统计数据
+  // 统计数据（基于日期分类）
   const totalCount = markers.length;
   const grayCount = markers.filter(m => !m.mingguIniServiceBy || m.mingguIniServiceBy.trim() === '').length;
   const grayWithWarningCount = markers.filter(m => m.visit === 'Butuh Service!').length;
-  const lianaFauziaCount = markers.filter(m => m.mingguIniServiceBy && m.mingguIniServiceBy.includes('Liana Fauzia')).length;
-  const niarZelaCount = markers.filter(m => m.mingguIniServiceBy && m.mingguIniServiceBy.includes('Niar Zela')).length;
+  
+  // 根据日期分类统计
+  const today = new Date();
+  const expiredCount = markers.filter(m => {
+    if (!m.mingguIniServiceBy || m.mingguIniServiceBy.trim() === '') return false;
+    const dateStr = m.mingguIniServiceBy.trim();
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const date = new Date(dateStr);
+      const diffTime = date.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays <= 0;
+    }
+    return false;
+  }).length;
+  
+  const within3DaysCount = markers.filter(m => {
+    if (!m.mingguIniServiceBy || m.mingguIniServiceBy.trim() === '') return false;
+    const dateStr = m.mingguIniServiceBy.trim();
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const date = new Date(dateStr);
+      const diffTime = date.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays > 0 && diffDays <= 3;
+    }
+    return false;
+  }).length;
+  
+  const within7DaysCount = markers.filter(m => {
+    if (!m.mingguIniServiceBy || m.mingguIniServiceBy.trim() === '') return false;
+    const dateStr = m.mingguIniServiceBy.trim();
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const date = new Date(dateStr);
+      const diffTime = date.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays > 3 && diffDays <= 7;
+    }
+    return false;
+  }).length;
+  
+  const after7DaysCount = markers.filter(m => {
+    if (!m.mingguIniServiceBy || m.mingguIniServiceBy.trim() === '') return false;
+    const dateStr = m.mingguIniServiceBy.trim();
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const date = new Date(dateStr);
+      const diffTime = date.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays > 7;
+    }
+    return false;
+  }).length;
 
   console.log('统计数据:', {
     total: totalCount,
     gray: grayCount,
     grayWithWarning: grayWithWarningCount,
-    lianaFauzia: lianaFauziaCount,
-    niarZela: niarZelaCount
+    expired: expiredCount,
+    within3Days: within3DaysCount,
+    within7Days: within7DaysCount,
+    after7Days: after7DaysCount
   });
 
   return (
@@ -539,14 +603,24 @@ function App() {
                   <span className="stat-value">{grayWithWarningCount}</span>
                 </div>
                 <div className="stat-item">
-                  <div className="color-circle blue"></div>
-                  <span className="stat-label">Liana Fauzia:</span>
-                  <span className="stat-value">{lianaFauziaCount}</span>
+                  <div className="color-circle red"></div>
+                  <span className="stat-label">已过期/今天:</span>
+                  <span className="stat-value">{expiredCount}</span>
                 </div>
                 <div className="stat-item">
-                  <div className="color-circle orange"></div>
-                  <span className="stat-label">Niar Zela:</span>
-                  <span className="stat-value">{niarZelaCount}</span>
+                  <div className="color-circle" style={{backgroundColor: '#ffc107'}}></div>
+                  <span className="stat-label">3天内:</span>
+                  <span className="stat-value">{within3DaysCount}</span>
+                </div>
+                <div className="stat-item">
+                  <div className="color-circle blue"></div>
+                  <span className="stat-label">一周内:</span>
+                  <span className="stat-value">{within7DaysCount}</span>
+                </div>
+                <div className="stat-item">
+                  <div className="color-circle green"></div>
+                  <span className="stat-label">一周后:</span>
+                  <span className="stat-value">{after7DaysCount}</span>
                 </div>
               </div>
             </div>
@@ -629,9 +703,23 @@ function App() {
                   </div>
                   {marker.mingguIniServiceBy && (
                     <div className="detail-row">
-                      <strong>👨‍💼 本周服务人员:</strong> 
+                      <strong>📅 服务日期:</strong> 
                       <span style={{
-                        color: marker.mingguIniServiceBy === 'Liana Fauzia' ? '#007bff' : '#fd7e14',
+                        color: (() => {
+                          const dateStr = marker.mingguIniServiceBy.trim();
+                          if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                            const date = new Date(dateStr);
+                            const today = new Date();
+                            const diffTime = date.getTime() - today.getTime();
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            
+                            if (diffDays <= 0) return '#dc3545'; // 红色
+                            if (diffDays <= 3) return '#ffc107'; // 黄色
+                            if (diffDays <= 7) return '#007bff'; // 蓝色
+                            return '#28a745'; // 绿色
+                          }
+                          return '#fd7e14'; // 橙色 - 非标准格式
+                        })(),
                         fontWeight: 'bold',
                         marginLeft: '4px'
                       }}>
