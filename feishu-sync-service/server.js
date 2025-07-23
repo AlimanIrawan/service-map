@@ -241,7 +241,7 @@ async function getFeishuData() {
       // 提取新的字段结构 - 匹配新的数据格式
       const outletCode = getFieldText(fields['Outlet Code']);
       const namaPemilik = getFieldText(fields['Nama Pemilik']);
-      const mingguIniServiceBy = getDateFieldText(fields['Minggu ini Service by']);
+      const mingguIniServiceBy = getDateFieldText(fields['Hari Service Minggu Ini']);
       const tanggalTurunFreezer = getFieldText(fields['Tanggal Turun Freezer']);
       const noTeleponPemilik = getPhoneNumber(fields['No Telepon Pemilik']);
       const visit = getFieldText(fields['Visit']);
@@ -251,16 +251,16 @@ async function getFeishuData() {
       const longitude = parseFloat(getFieldText(fields['longitude']));
       const latitude = parseFloat(getFieldText(fields['latitude']));
       
-      // 🔍 详细调试"minggu ini service by"字段（日期格式）
+      // 🔍 详细调试"Hari Service Minggu Ini"字段（日期格式）
       console.log(`\n🔍 === 记录详情分析: ${outletCode} ===`);
-      console.log(`📋 原始字段数据:`, JSON.stringify(fields['Minggu ini Service by'], null, 2));
+      console.log(`📋 原始字段数据:`, JSON.stringify(fields['Hari Service Minggu Ini'], null, 2));
       console.log(`📅 处理后的日期值: "${mingguIniServiceBy}"`);
       console.log(`📏 字符串长度: ${mingguIniServiceBy.length}`);
       console.log(`🔤 字符串类型: ${typeof mingguIniServiceBy}`);
       
       // 检查是否为空或只包含空白字符
       if (!mingguIniServiceBy || mingguIniServiceBy.trim() === '') {
-        console.log(`⚠️ 警告: "minggu ini service by"日期字段为空!`);
+        console.log(`⚠️ 警告: "Hari Service Minggu Ini"日期字段为空!`);
         console.log(`🔍 检查其他可能的字段名:`);
         const possibleFields = ['PIC', 'Service by', 'Minggu Service by', 'Service Person', 'Petugas'];
         possibleFields.forEach(fieldName => {
@@ -269,7 +269,7 @@ async function getFeishuData() {
           }
         });
       } else {
-        console.log(`✅ "minggu ini service by"日期字段有值: "${mingguIniServiceBy}"`);
+        console.log(`✅ "Hari Service Minggu Ini"日期字段有值: "${mingguIniServiceBy}"`);
       }
       
       // 详细调试输出
@@ -324,7 +324,7 @@ async function getFeishuData() {
 
 // 生成CSV内容 - 更新为新的数据格式
 function generateCSV(data) {
-  const headers = 'Outlet Code,Nama Pemilik,Minggu ini Service by,Tanggal Turun Freezer,latitude,longitude,No Telepon Pemilik,Visit,PO,BuangEs,Outlet Status';
+  const headers = 'Outlet Code,Nama Pemilik,Hari Service Minggu Ini,Tanggal Turun Freezer,latitude,longitude,No Telepon Pemilik,Visit,PO,BuangEs,Outlet Status';
   const rows = data.map(item => {
     return `"${item.outletCode}","${item.namaPemilik}","${item.mingguIniServiceBy}","${item.tanggalTurunFreezer}",${item.latitude},${item.longitude},"${item.noTeleponPemilik}","${item.visit}","${item.po}","${item.buangEs}","${item.outletStatus}"`;
   });
@@ -772,7 +772,7 @@ app.get('/debug-all-fields', async (req, res) => {
         },
         field_analysis: records.map((record, index) => {
           const fields = record.fields;
-          const mingguIniServiceByRaw = fields['Minggu ini Service by'];
+          const mingguIniServiceByRaw = fields['Hari Service Minggu Ini'];
           const mingguIniServiceByProcessed = getDateFieldText(mingguIniServiceByRaw);
           
           return {
@@ -781,7 +781,7 @@ app.get('/debug-all-fields', async (req, res) => {
             record_id: record.record_id,
             all_available_fields: Object.keys(fields).sort(),
             minggu_ini_service_by_analysis: {
-              field_exists: 'Minggu ini Service by' in fields,
+              field_exists: 'Hari Service Minggu Ini' in fields,
               raw_data: mingguIniServiceByRaw,
               raw_data_type: typeof mingguIniServiceByRaw,
               processed_value: mingguIniServiceByProcessed,
@@ -831,7 +831,7 @@ app.get('/debug-all-fields', async (req, res) => {
       
       debugInfo.field_analysis.forEach((record, index) => {
         console.log(`\n📝 记录 ${index + 1} (${record.outlet_code}):`);
-        console.log('  📅 Minggu ini Service by 日期分析:');
+        console.log('  📅 Hari Service Minggu Ini 日期分析:');
         console.log('    - 字段存在:', record.minggu_ini_service_by_analysis.field_exists);
         console.log('    - 原始数据:', JSON.stringify(record.minggu_ini_service_by_analysis.raw_data));
         console.log('    - 处理后日期值:', `"${record.minggu_ini_service_by_analysis.processed_value}"`);
@@ -898,7 +898,7 @@ app.get('/api/csv-data', async (req, res) => {
     console.error('获取CSV数据失败:', error);
     
     // 返回空的CSV（只有表头）- 使用正确的格式
-    const emptyCSV = 'Outlet Code,Nama Pemilik,Minggu ini Service by,Tanggal Turun Freezer,latitude,longitude,No Telepon Pemilik,Visit,PO,BuangEs,Outlet Status';
+    const emptyCSV = 'Outlet Code,Nama Pemilik,Hari Service Minggu Ini,Tanggal Turun Freezer,latitude,longitude,No Telepon Pemilik,Visit,PO,BuangEs,Outlet Status';
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.send(emptyCSV);

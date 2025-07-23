@@ -676,7 +676,7 @@ const parseCSV = (csvText: string): MarkerData[] => {
     const values = lines[i].split(',');
     if (values.length < 11) continue; // 至少需要11个字段
 
-    // 标准字段顺序：Outlet Code,Nama Pemilik,Minggu ini Service by,Tanggal Turun Freezer,latitude,longitude,No Telepon Pemilik,Visit,PO,BuangEs,Outlet Status
+    // 标准字段顺序：Outlet Code,Nama Pemilik,Hari Service Minggu Ini,Tanggal Turun Freezer,latitude,longitude,No Telepon Pemilik,Visit,PO,BuangEs,Outlet Status
     const outletCode = values[0]?.replace(/"/g, '') || '';
     const namaPemilik = values[1]?.replace(/"/g, '') || '';
     const mingguIniServiceBy = values[2]?.replace(/"/g, '') || '';
