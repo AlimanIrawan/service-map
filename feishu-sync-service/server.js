@@ -179,6 +179,50 @@ async function getFeishuData() {
       return '';
     }
     
+    // 辅助函数：处理日期字段格式
+    function getDateFieldText(field) {
+      if (!field) return '';
+      
+      let dateValue = '';
+      
+      // 处理不同的飞书日期字段格式
+      if (Array.isArray(field) && field.length > 0) {
+        if (field[0].text) {
+          dateValue = field[0].text;
+        } else if (field[0]) {
+          dateValue = field[0].toString();
+        }
+      } else if (typeof field === 'string') {
+        dateValue = field;
+      } else if (typeof field === 'number') {
+        // 如果是时间戳，转换为日期格式
+        dateValue = new Date(field).toISOString().split('T')[0];
+      } else if (field && typeof field === 'object') {
+        // 处理飞书日期对象格式
+        if (field.date) {
+          dateValue = field.date;
+        } else if (field.timestamp) {
+          dateValue = new Date(field.timestamp * 1000).toISOString().split('T')[0];
+        }
+      }
+      
+      // 验证和格式化日期
+      if (dateValue) {
+        try {
+          // 尝试解析日期
+          const parsedDate = new Date(dateValue);
+          if (!isNaN(parsedDate.getTime())) {
+            // 返回 YYYY-MM-DD 格式
+            return parsedDate.toISOString().split('T')[0];
+          }
+        } catch (error) {
+          console.log(`⚠️ 日期格式解析错误: ${dateValue}`, error.message);
+        }
+      }
+      
+      return dateValue || '';
+    }
+    
     // 辅助函数：提取电话号码
     function getPhoneNumber(field) {
       if (!field) return '';
@@ -197,7 +241,7 @@ async function getFeishuData() {
       // 提取新的字段结构 - 匹配新的数据格式
       const outletCode = getFieldText(fields['Outlet Code']);
       const namaPemilik = getFieldText(fields['Nama Pemilik']);
-      const mingguIniServiceBy = getFieldText(fields['Minggu ini Service by']);
+      const mingguIniServiceBy = getDateFieldText(fields['Minggu ini Service by']);
       const tanggalTurunFreezer = getFieldText(fields['Tanggal Turun Freezer']);
       const noTeleponPemilik = getPhoneNumber(fields['No Telepon Pemilik']);
       const visit = getFieldText(fields['Visit']);
@@ -207,16 +251,16 @@ async function getFeishuData() {
       const longitude = parseFloat(getFieldText(fields['longitude']));
       const latitude = parseFloat(getFieldText(fields['latitude']));
       
-      // 🔍 详细调试"minggu ini service by"字段
+      // 🔍 详细调试"minggu ini service by"字段（日期格式）
       console.log(`\n🔍 === 记录详情分析: ${outletCode} ===`);
       console.log(`📋 原始字段数据:`, JSON.stringify(fields['Minggu ini Service by'], null, 2));
-      console.log(`🎯 处理后的值: "${mingguIniServiceBy}"`);
+      console.log(`📅 处理后的日期值: "${mingguIniServiceBy}"`);
       console.log(`📏 字符串长度: ${mingguIniServiceBy.length}`);
       console.log(`🔤 字符串类型: ${typeof mingguIniServiceBy}`);
       
       // 检查是否为空或只包含空白字符
       if (!mingguIniServiceBy || mingguIniServiceBy.trim() === '') {
-        console.log(`⚠️ 警告: "minggu ini service by"字段为空!`);
+        console.log(`⚠️ 警告: "minggu ini service by"日期字段为空!`);
         console.log(`🔍 检查其他可能的字段名:`);
         const possibleFields = ['PIC', 'Service by', 'Minggu Service by', 'Service Person', 'Petugas'];
         possibleFields.forEach(fieldName => {
@@ -225,7 +269,7 @@ async function getFeishuData() {
           }
         });
       } else {
-        console.log(`✅ "minggu ini service by"字段有值: "${mingguIniServiceBy}"`);
+        console.log(`✅ "minggu ini service by"日期字段有值: "${mingguIniServiceBy}"`);
       }
       
       // 详细调试输出
@@ -675,6 +719,50 @@ app.get('/debug-all-fields', async (req, res) => {
         return '';
       }
       
+      // 辅助函数：处理日期字段格式
+      function getDateFieldText(field) {
+        if (!field) return '';
+        
+        let dateValue = '';
+        
+        // 处理不同的飞书日期字段格式
+        if (Array.isArray(field) && field.length > 0) {
+          if (field[0].text) {
+            dateValue = field[0].text;
+          } else if (field[0]) {
+            dateValue = field[0].toString();
+          }
+        } else if (typeof field === 'string') {
+          dateValue = field;
+        } else if (typeof field === 'number') {
+          // 如果是时间戳，转换为日期格式
+          dateValue = new Date(field).toISOString().split('T')[0];
+        } else if (field && typeof field === 'object') {
+          // 处理飞书日期对象格式
+          if (field.date) {
+            dateValue = field.date;
+          } else if (field.timestamp) {
+            dateValue = new Date(field.timestamp * 1000).toISOString().split('T')[0];
+          }
+        }
+        
+        // 验证和格式化日期
+        if (dateValue) {
+          try {
+            // 尝试解析日期
+            const parsedDate = new Date(dateValue);
+            if (!isNaN(parsedDate.getTime())) {
+              // 返回 YYYY-MM-DD 格式
+              return parsedDate.toISOString().split('T')[0];
+            }
+          } catch (error) {
+            console.log(`⚠️ 日期格式解析错误: ${dateValue}`, error.message);
+          }
+        }
+        
+        return dateValue || '';
+      }
+      
       const debugInfo = {
         total_records: records.length,
         api_response_structure: {
@@ -685,7 +773,7 @@ app.get('/debug-all-fields', async (req, res) => {
         field_analysis: records.map((record, index) => {
           const fields = record.fields;
           const mingguIniServiceByRaw = fields['Minggu ini Service by'];
-          const mingguIniServiceByProcessed = getFieldText(mingguIniServiceByRaw);
+          const mingguIniServiceByProcessed = getDateFieldText(mingguIniServiceByRaw);
           
           return {
             record_index: index,
@@ -743,10 +831,10 @@ app.get('/debug-all-fields', async (req, res) => {
       
       debugInfo.field_analysis.forEach((record, index) => {
         console.log(`\n📝 记录 ${index + 1} (${record.outlet_code}):`);
-        console.log('  🎯 Minggu ini Service by 分析:');
+        console.log('  📅 Minggu ini Service by 日期分析:');
         console.log('    - 字段存在:', record.minggu_ini_service_by_analysis.field_exists);
         console.log('    - 原始数据:', JSON.stringify(record.minggu_ini_service_by_analysis.raw_data));
-        console.log('    - 处理后值:', `"${record.minggu_ini_service_by_analysis.processed_value}"`);
+        console.log('    - 处理后日期值:', `"${record.minggu_ini_service_by_analysis.processed_value}"`);
         console.log('    - 是否为空:', record.minggu_ini_service_by_analysis.is_empty);
         
         console.log('  🔍 替代字段检查:');
