@@ -519,11 +519,9 @@ function App() {
         <div className="left-panels">
           <div className="info-panel">
             <div className="info-content">
-              <h3>📊 统计</h3>
               <div className="info-stats">
                 <div className="stat-item">
-                  <span className="stat-label">🏪 总点数:</span>
-                  <span className="stat-value">{totalCount}</span>
+                  <span className="stat-value">🏪 {totalCount}</span>
                 </div>
                 <div className="stat-item">
                    <div className="color-circle gray"></div>
