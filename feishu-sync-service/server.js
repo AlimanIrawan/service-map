@@ -6,7 +6,7 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5001;
 
 // 中间件配置
 app.use(cors());
@@ -147,110 +147,73 @@ async function getFeishuData() {
       console.log('📋 飞书表格字段列表:', Object.keys(allRecords[0].fields));
     }
 
-    // 过滤今天的数据并转换格式
-    const todayRecords = allRecords.filter(record => {
-      // 尝试多个可能的日期字段名
-      const tanggalKirim = record.fields['Tanggal Kirim/Ambil'] || record.fields['Tanggal Kirim EsKrim'];
-      if (!tanggalKirim) {
-        console.log(`⚠️ 记录缺少发送日期字段: ${record.fields['Outlet Code'] || 'Unknown'}`);
-        console.log(`📋 该记录的字段: ${Object.keys(record.fields).join(', ')}`);
+    // 过滤符合条件的数据：Outlet Status为Active且Tanggal Turun Freezer不为空
+    const filteredRecords = allRecords.filter(record => {
+      const outletStatus = getFieldText(record.fields['Outlet Status']);
+      const tanggalTurunFreezer = getFieldText(record.fields['Tanggal Turun Freezer']);
+      
+      // 检查Outlet Status是否为Active
+      if (outletStatus !== 'Active') {
+        console.log(`⚠️ 跳过非Active状态的记录: ${record.fields['Outlet Code'] || 'Unknown'} - 状态: ${outletStatus}`);
         return false;
       }
       
-      // 处理日期格式，统一转换为雅加达时区
-      let recordDateString;
-      if (typeof tanggalKirim === 'number') {
-        // 时间戳格式 - 直接转换为雅加达时区日期字符串
-        const utcDate = new Date(tanggalKirim);
-        const jakartaDateObj = new Date(utcDate.toLocaleString("en-US", {timeZone: "Asia/Jakarta"}));
-        recordDateString = `${jakartaDateObj.getFullYear()}/${String(jakartaDateObj.getMonth() + 1).padStart(2, '0')}/${String(jakartaDateObj.getDate()).padStart(2, '0')}`;
-        console.log(`📅 时间戳格式: ${tanggalKirim} -> Jakarta日期: ${recordDateString}`);
-      } else if (typeof tanggalKirim === 'string') {
-        // 字符串格式 - 假设已经是正确格式
-        recordDateString = tanggalKirim;
-        console.log(`📅 字符串格式: ${tanggalKirim}`);
-      } else {
-        console.log(`❌ 未知日期格式: ${typeof tanggalKirim} - ${tanggalKirim}`);
+      // 检查Tanggal Turun Freezer是否不为空
+      if (!tanggalTurunFreezer || tanggalTurunFreezer.trim() === '') {
+        console.log(`⚠️ 跳过没有冰柜投放日期的记录: ${record.fields['Outlet Code'] || 'Unknown'}`);
         return false;
       }
       
-      // 检查日期字符串是否有效
-      if (!recordDateString) {
-        console.log(`❌ 无效日期: ${tanggalKirim}`);
-        return false;
-      }
-      
-      const isToday = recordDateString === todayDate;
-      
-      console.log(`🔍 日期比较: 记录日期=${recordDateString}, 今天=${todayDate}, 匹配=${isToday}`);
-      
-      if (isToday) {
-        // 调试输出：显示记录的所有字段名称
-        console.log(`🔍 今天的记录字段: ${record.fields['Outlet Code']} - 字段列表: ${Object.keys(record.fields).join(', ')}`);
-        console.log(`📍 经纬度字段值: latitude=${record.fields['latitude']}, longitude=${record.fields['longitude']}`);
-      }
-      
-      return isToday;
+      console.log(`✅ 符合条件的记录: ${record.fields['Outlet Code']} - 状态: ${outletStatus}, 冰柜日期: ${tanggalTurunFreezer}`);
+      return true;
     });
+    
+    // 辅助函数：提取飞书字段的文本值
+    function getFieldText(field) {
+      if (!field) return '';
+      if (Array.isArray(field) && field.length > 0 && field[0].text) {
+        return field[0].text;
+      }
+      if (typeof field === 'string') return field;
+      if (typeof field === 'number') return field.toString();
+      return '';
+    }
+    
+    // 辅助函数：提取电话号码
+    function getPhoneNumber(field) {
+      if (!field) return '';
+      if (Array.isArray(field) && field.length > 0 && field[0].fullPhoneNum) {
+        return field[0].fullPhoneNum;
+      }
+      return getFieldText(field);
+    }
 
-    console.log(`🎯 筛选出今天的记录: ${todayRecords.length} 条`);
+    console.log(`🎯 筛选出符合条件的记录: ${filteredRecords.length} 条`);
 
     // 转换为CSV格式的数据
-    const csvData = todayRecords.map(record => {
+    const csvData = filteredRecords.map(record => {
       const fields = record.fields;
       
-      // 辅助函数：提取飞书字段的文本值
-      const getFieldText = (field) => {
-        if (!field) return '';
-        if (Array.isArray(field) && field.length > 0 && field[0].text) {
-          return field[0].text;
-        }
-        if (typeof field === 'string') return field;
-        if (typeof field === 'number') return field.toString();
-        return '';
-      };
-      
-      // 辅助函数：提取电话号码
-      const getPhoneNumber = (field) => {
-        if (!field) return '';
-        if (Array.isArray(field) && field.length > 0 && field[0].fullPhoneNum) {
-          return field[0].fullPhoneNum;
-        }
-        return getFieldText(field);
-      };
-      
-      // 重新提取日期字段，使用与Filter阶段相同的时区转换逻辑
-      const tanggalKirimField = fields['Tanggal Kirim/Ambil'] || fields['Tanggal Kirim EsKrim'];
-      let tanggalKirimAmbil = '';
-      if (tanggalKirimField) {
-        if (typeof tanggalKirimField === 'number') {
-          // 使用与Filter阶段相同的雅加达时区转换逻辑
-          const utcDate = new Date(tanggalKirimField);
-          const jakartaDateObj = new Date(utcDate.toLocaleString("en-US", {timeZone: "Asia/Jakarta"}));
-          tanggalKirimAmbil = `${jakartaDateObj.getFullYear()}/${String(jakartaDateObj.getMonth() + 1).padStart(2, '0')}/${String(jakartaDateObj.getDate()).padStart(2, '0')}`;
-        } else {
-          tanggalKirimAmbil = getFieldText(tanggalKirimField);
-        }
-      }
-      
-      // 提取新的字段结构 - 匹配飞书表格
+      // 提取新的字段结构 - 匹配新的数据格式
       const outletCode = getFieldText(fields['Outlet Code']);
       const namaPemilik = getFieldText(fields['Nama Pemilik']);
-      const pic = getFieldText(fields['PIC']);
-      const untuk = getFieldText(fields['Untuk']);
-      const udahAnter = getFieldText(fields['Udah Anter']);
+      const mingguIniServiceBy = getFieldText(fields['Minggu ini Service by']);
+      const tanggalTurunFreezer = getFieldText(fields['Tanggal Turun Freezer']);
       const noTeleponPemilik = getPhoneNumber(fields['No Telepon Pemilik']);
-      const namaToko = getFieldText(fields['Nama Toko']);
+      const visit = getFieldText(fields['Visit']);
+      const po = getFieldText(fields['PO']);
+      const buangEs = getFieldText(fields['BuangEs']);
+      const outletStatus = getFieldText(fields['Outlet Status']);
       const longitude = parseFloat(getFieldText(fields['longitude']));
       const latitude = parseFloat(getFieldText(fields['latitude']));
       
       // 详细调试输出
       console.log(`🔍 记录详情: ${outletCode}`);
       console.log(`  - 经纬度: lat=${latitude}, lng=${longitude}`);
-      console.log(`  - 店主: ${namaPemilik}, 店名: ${namaToko}`);
-      console.log(`  - PIC: ${pic}, 电话: ${noTeleponPemilik}`);
-      console.log(`  - 类型: ${untuk}, 完成状态: ${udahAnter}`);
-      console.log(`  - 日期: ${tanggalKirimAmbil}`);
+      console.log(`  - 店主: ${namaPemilik}, 服务人员: ${mingguIniServiceBy}`);
+      console.log(`  - 电话: ${noTeleponPemilik}, 状态: ${outletStatus}`);
+      console.log(`  - 冰柜日期: ${tanggalTurunFreezer}, 访问: ${visit}`);
+      console.log(`  - PO: ${po}, 倒冰: ${buangEs}`);
       
       // 如果经纬度无效，跳过此记录
       if (isNaN(latitude) || isNaN(longitude) || latitude === 0 || longitude === 0) {
@@ -261,14 +224,15 @@ async function getFeishuData() {
       return {
         outletCode: outletCode || '',
         namaPemilik: namaPemilik || '',
-        pic: pic || '',
-        untuk: untuk || '',
-        tanggalKirimAmbil: tanggalKirimAmbil || '',
-        udahAnter: udahAnter || '',
-        noTeleponPemilik: noTeleponPemilik || '',
-        namaToko: namaToko || '',
+        mingguIniServiceBy: mingguIniServiceBy || '',
+        tanggalTurunFreezer: tanggalTurunFreezer || '',
+        latitude: latitude,
         longitude: longitude,
-        latitude: latitude
+        noTeleponPemilik: noTeleponPemilik || '',
+        visit: visit || '',
+        po: po || '',
+        buangEs: buangEs || '',
+        outletStatus: outletStatus || ''
       };
     }).filter(record => record !== null); // 过滤掉无效记录
 
@@ -293,11 +257,11 @@ async function getFeishuData() {
   }
 }
 
-// 生成CSV内容
+// 生成CSV内容 - 更新为新的数据格式
 function generateCSV(data) {
-  const headers = 'Outlet Code,Nama Pemilik,PIC,Untuk,Tanggal Kirim/Ambil,Udah Anter,No Telepon Pemilik,Nama Toko,longitude,latitude';
+  const headers = 'Outlet Code,Nama Pemilik,Minggu ini Service by,Tanggal Turun Freezer,latitude,longitude,No Telepon Pemilik,Visit,PO,BuangEs,Outlet Status';
   const rows = data.map(item => {
-    return `${item.outletCode},"${item.namaPemilik}","${item.pic}","${item.untuk}","${item.tanggalKirimAmbil}","${item.udahAnter}","${item.noTeleponPemilik}","${item.namaToko}",${item.longitude},${item.latitude}`;
+    return `"${item.outletCode}","${item.namaPemilik}","${item.mingguIniServiceBy}","${item.tanggalTurunFreezer}",${item.latitude},${item.longitude},"${item.noTeleponPemilik}","${item.visit}","${item.po}","${item.buangEs}","${item.outletStatus}"`;
   });
   return [headers, ...rows].join('\n');
 }
@@ -743,8 +707,8 @@ app.get('/api/csv-data', async (req, res) => {
   } catch (error) {
     console.error('获取CSV数据失败:', error);
     
-    // 返回空的CSV（只有表头）
-    const emptyCSV = 'Outlet Code,Nama Pemilik,PIC,Untuk,Tanggal Kirim/Ambil,Udah Anter,No Telepon Pemilik,Nama Toko,longitude,latitude';
+    // 返回空的CSV（只有表头）- 使用正确的格式
+    const emptyCSV = 'Outlet Code,Nama Pemilik,Minggu ini Service by,Tanggal Turun Freezer,latitude,longitude,No Telepon Pemilik,Visit,PO,BuangEs,Outlet Status';
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.send(emptyCSV);
@@ -890,4 +854,4 @@ app.listen(PORT, () => {
   console.log(`🚀 服务运行在端口 ${PORT}`);
   console.log(`🌍 服务地址: https://feishu-delivery-sync.onrender.com`);
   console.log('/' .repeat(60));
-}); 
+});

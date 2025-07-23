@@ -40,54 +40,10 @@ const headquartersIcon = new L.Icon({
   shadowAnchor: [20, 30]
 });
 
-// 创建不同颜色的标记图标
-const createMarkerIcon = (color: string) => {
-  return new L.Icon({
-    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-        <circle cx="12" cy="12" r="10" fill="${color}" stroke="white" stroke-width="2"/>
-      </svg>
-    `),
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-    popupAnchor: [0, -12]
-  });
-};
 
-// 创建带感叹号的灰色图标
-const createGrayIconWithWarning = () => {
-  return new L.Icon({
-    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-        <circle cx="12" cy="12" r="10" fill="#6c757d" stroke="white" stroke-width="2"/>
-        <text x="12" y="16" font-family="Arial" font-size="14" font-weight="bold" fill="red" text-anchor="middle">!</text>
-      </svg>
-    `),
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-    popupAnchor: [0, -12]
-  });
-};
-
-// 创建服务人员专用图标
-const createServicePersonIcon = (color: string) => {
-  return new L.Icon({
-    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-        <circle cx="12" cy="12" r="10" fill="${color}" stroke="white" stroke-width="2"/>
-      </svg>
-    `),
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-    popupAnchor: [0, -12]
-  });
-};
 
 // 预定义图标
-const grayMarkerIcon = createMarkerIcon('#6c757d');          // 基础灰色
-const grayWithWarningIcon = createGrayIconWithWarning();     // 灰色带红色感叹号
-const lianaFauziaIcon = createServicePersonIcon('#007bff');  // Liana Fauzia - 蓝色
-const niarZelaIcon = createServicePersonIcon('#fd7e14');     // Niar Zela - 橙色
+// 图标创建函数已移至getMarkerIcon函数内部
 
 interface MarkerData {
   outletCode: string;
@@ -348,25 +304,52 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
 
 // 获取标记图标（根据新的业务逻辑）
 const getMarkerIcon = (marker: MarkerData) => {
-  // 1. 优先检查是否有服务人员分配
-  if (marker.mingguIniServiceBy && marker.mingguIniServiceBy.trim() !== '') {
-    const servicePerson = marker.mingguIniServiceBy.trim();
-    if (servicePerson === 'Liana Fauzia') {
-      return lianaFauziaIcon;
-    } else if (servicePerson === 'Niar Zela') {
-      return niarZelaIcon;
+  const servicePerson = marker.mingguIniServiceBy;
+  const needsService = marker.visit === 'Butuh Service!';
+  
+  let color = '#808080'; // 默认灰色
+  
+  // 根据服务人员分配不同颜色
+  if (servicePerson && servicePerson.trim() !== '') {
+    if (servicePerson.includes('Liana Fauzia')) {
+      color = '#0066CC'; // 蓝色
+    } else if (servicePerson.includes('Niar Zela')) {
+      color = '#FF8800'; // 橙色
     }
-    // 如果是其他服务人员，暂时使用蓝色
-    return lianaFauziaIcon;
+    // 可以在这里添加更多服务人员的颜色映射
   }
   
-  // 2. 检查是否需要服务（Visit字段）
-  if (marker.visit === 'Butuh Service!') {
-    return grayWithWarningIcon;
-  }
+  // 创建自定义图标
+  const iconHtml = needsService 
+    ? `<div style="
+        width: 20px;
+        height: 20px;
+        background-color: ${color};
+        border: 2px solid white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: red;
+        font-size: 14px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      ">!</div>`
+    : `<div style="
+        width: 16px;
+        height: 16px;
+        background-color: ${color};
+        border: 2px solid white;
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      "></div>`;
   
-  // 3. 默认显示基础灰色
-  return grayMarkerIcon;
+  return L.divIcon({
+    html: iconHtml,
+    className: 'custom-marker',
+    iconSize: [20, 20],
+    iconAnchor: [10, 10]
+  });
 };
 
 function App() {
@@ -501,12 +484,9 @@ function App() {
   // 统计数据
   const totalCount = markers.length;
   const grayCount = markers.filter(m => !m.mingguIniServiceBy || m.mingguIniServiceBy.trim() === '').length;
-  const grayWithWarningCount = markers.filter(m => 
-    (!m.mingguIniServiceBy || m.mingguIniServiceBy.trim() === '') && 
-    m.visit === 'Butuh Service!'
-  ).length;
-  const lianaFauziaCount = markers.filter(m => m.mingguIniServiceBy === 'Liana Fauzia').length;
-  const niarZelaCount = markers.filter(m => m.mingguIniServiceBy === 'Niar Zela').length;
+  const grayWithWarningCount = markers.filter(m => m.visit === 'Butuh Service!').length;
+  const lianaFauziaCount = markers.filter(m => m.mingguIniServiceBy && m.mingguIniServiceBy.includes('Liana Fauzia')).length;
+  const niarZelaCount = markers.filter(m => m.mingguIniServiceBy && m.mingguIniServiceBy.includes('Niar Zela')).length;
 
   console.log('统计数据:', {
     total: totalCount,
@@ -689,36 +669,49 @@ const parseCSV = (csvText: string): MarkerData[] => {
   const headers = lines[0].split(',');
   const markers: MarkerData[] = [];
 
-  console.log('📊 解析新数据格式中...');
+  console.log('📊 解析标准数据格式中...');
+  console.log('📋 CSV头部:', headers);
 
   for (let i = 1; i < lines.length; i++) {
     const values = lines[i].split(',');
     if (values.length < 11) continue; // 至少需要11个字段
 
+    // 标准字段顺序：Outlet Code,Nama Pemilik,Minggu ini Service by,Tanggal Turun Freezer,latitude,longitude,No Telepon Pemilik,Visit,PO,BuangEs,Outlet Status
+    const outletCode = values[0]?.replace(/"/g, '') || '';
+    const namaPemilik = values[1]?.replace(/"/g, '') || '';
+    const mingguIniServiceBy = values[2]?.replace(/"/g, '') || '';
+    const tanggalTurunFreezer = values[3]?.replace(/"/g, '') || '';
     const latitude = parseFloat(values[4]?.replace(/"/g, '') || '0');
     const longitude = parseFloat(values[5]?.replace(/"/g, '') || '0');
+    const noTeleponPemilik = values[6]?.replace(/"/g, '') || '';
+    const visit = values[7]?.replace(/"/g, '') || '';
+    const po = values[8]?.replace(/"/g, '') || '';
+    const buangEs = values[9]?.replace(/"/g, '') || '';
     const outletStatus = values[10]?.replace(/"/g, '') || '';
-    const tanggalTurunFreezer = values[3]?.replace(/"/g, '') || '';
     
-    // 新的筛选逻辑：Outlet Status = "Active" 且 Tanggal Turun Freezer 不为空
+    // 筛选逻辑：Outlet Status = "Active" 且 Tanggal Turun Freezer 不为空
     if (outletStatus !== 'Active' || !tanggalTurunFreezer || tanggalTurunFreezer.trim() === '') {
+      console.log(`⚠️ 跳过记录: ${outletCode} - 状态: ${outletStatus}, 冰柜日期: ${tanggalTurunFreezer}`);
       continue;
     }
     
-    if (isNaN(latitude) || isNaN(longitude)) continue;
+    if (isNaN(latitude) || isNaN(longitude)) {
+      console.log(`⚠️ 跳过无效坐标: ${outletCode}`);
+      continue;
+    }
 
     markers.push({
-      outletCode: values[0]?.replace(/"/g, '') || '',
-      namaPemilik: values[1]?.replace(/"/g, '') || '',
-      mingguIniServiceBy: values[2]?.replace(/"/g, '') || '',
-      tanggalTurunFreezer: tanggalTurunFreezer,
-      latitude: latitude,
-      longitude: longitude,
-      noTeleponPemilik: values[6]?.replace(/"/g, '') || '',
-      visit: values[7]?.replace(/"/g, '') || '',
-      po: values[8]?.replace(/"/g, '') || '',
-      buangEs: values[9]?.replace(/"/g, '') || '',
-      outletStatus: outletStatus
+      outletCode,
+      namaPemilik,
+      mingguIniServiceBy,
+      tanggalTurunFreezer,
+      latitude,
+      longitude,
+      noTeleponPemilik,
+      visit,
+      po,
+      buangEs,
+      outletStatus
     });
   }
 
@@ -726,4 +719,4 @@ const parseCSV = (csvText: string): MarkerData[] => {
   return markers;
 };
 
-export default App; 
+export default App;

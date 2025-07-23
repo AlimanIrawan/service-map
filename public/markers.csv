@@ -1,1 +1,6 @@
-Outlet Code,Nama Pemilik,PIC,Untuk,Tanggal Kirim/Ambil,Udah Anter,No Telepon Pemilik,Nama Toko,longitude,latitude
+Outlet Code,Nama Pemilik,Minggu ini Service by,Tanggal Turun Freezer,latitude,longitude,No Telepon Pemilik,Visit,PO,BuangEs,Outlet Status
+OUT001,Budi Santoso,Liana Fauzia,2024-01-15,-6.2088,106.8456,081234567890,Completed,PO001,Yes,Active
+OUT002,Siti Rahayu,,2024-01-16,-6.1751,106.8650,081234567891,Butuh Service!,PO002,No,Active
+OUT003,Ahmad Wijaya,Liana Fauzia,2024-01-17,-6.2297,106.8177,081234567892,Completed,PO003,Yes,Active
+OUT004,Dewi Sartika,,2024-01-18,-6.1944,106.8229,081234567893,Butuh Service!,PO004,No,Active
+OUT005,Rudi Hermawan,Niar Zela,2024-01-19,-6.2615,106.7837,081234567894,Completed,PO005,Yes,Active
