@@ -669,7 +669,7 @@ const parseCSV = (csvText: string): MarkerData[] => {
   const headers = lines[0].split(',');
   const markers: MarkerData[] = [];
 
-  console.log('📊 解析标准数据格式中...');
+  console.log('📊 解析标准数据格式中... (更新时间: ' + new Date().toLocaleString() + ')');
   console.log('📋 CSV头部:', headers);
 
   for (let i = 1; i < lines.length; i++) {
