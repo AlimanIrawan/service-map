@@ -100,6 +100,7 @@ interface MarkerData {
   visit: string;
   po: string;
   buangEs: string;
+  outletStatus: string;
 }
 
 interface LoginFormProps {
@@ -680,7 +681,7 @@ function App() {
   );
 }
 
-// CSV解析函数 - 更新以支持新的数据格式
+// CSV解析函数 - 更新以支持新的数据格式和筛选逻辑
 const parseCSV = (csvText: string): MarkerData[] => {
   const lines = csvText.trim().split('\n');
   if (lines.length < 2) return [];
@@ -692,10 +693,17 @@ const parseCSV = (csvText: string): MarkerData[] => {
 
   for (let i = 1; i < lines.length; i++) {
     const values = lines[i].split(',');
-    if (values.length < 10) continue; // 至少需要10个字段
+    if (values.length < 11) continue; // 至少需要11个字段
 
     const latitude = parseFloat(values[4]?.replace(/"/g, '') || '0');
     const longitude = parseFloat(values[5]?.replace(/"/g, '') || '0');
+    const outletStatus = values[10]?.replace(/"/g, '') || '';
+    const tanggalTurunFreezer = values[3]?.replace(/"/g, '') || '';
+    
+    // 新的筛选逻辑：Outlet Status = "Active" 且 Tanggal Turun Freezer 不为空
+    if (outletStatus !== 'Active' || !tanggalTurunFreezer || tanggalTurunFreezer.trim() === '') {
+      continue;
+    }
     
     if (isNaN(latitude) || isNaN(longitude)) continue;
 
@@ -703,17 +711,18 @@ const parseCSV = (csvText: string): MarkerData[] => {
       outletCode: values[0]?.replace(/"/g, '') || '',
       namaPemilik: values[1]?.replace(/"/g, '') || '',
       mingguIniServiceBy: values[2]?.replace(/"/g, '') || '',
-      tanggalTurunFreezer: values[3]?.replace(/"/g, '') || '',
+      tanggalTurunFreezer: tanggalTurunFreezer,
       latitude: latitude,
       longitude: longitude,
       noTeleponPemilik: values[6]?.replace(/"/g, '') || '',
       visit: values[7]?.replace(/"/g, '') || '',
       po: values[8]?.replace(/"/g, '') || '',
-      buangEs: values[9]?.replace(/"/g, '') || ''
+      buangEs: values[9]?.replace(/"/g, '') || '',
+      outletStatus: outletStatus
     });
   }
 
-  console.log(`📍 成功解析 ${markers.length} 个标记点`);
+  console.log(`📍 成功解析 ${markers.length} 个符合条件的标记点（Active状态且有冰柜投放日期）`);
   return markers;
 };
 
