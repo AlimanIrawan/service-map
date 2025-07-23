@@ -526,20 +526,17 @@ function App() {
                   <span className="stat-value">{totalCount}</span>
                 </div>
                 <div className="stat-item">
-                  <div className="color-circle gray"></div>
-                  <span className="stat-label">无服务日期:</span>
-                  <span className="stat-value">{grayCount}</span>
-                </div>
-                <div className="stat-item">
-                  <div className="color-circle red"></div>
-                  <span className="stat-label">必须服务:</span>
-                  <span className="stat-value">{redCount}</span>
-                </div>
-                <div className="stat-item">
-                  <div className="color-circle green"></div>
-                  <span className="stat-label">有服务日期:</span>
-                  <span className="stat-value">{greenCount}</span>
-                </div>
+                   <div className="color-circle gray"></div>
+                   <span className="stat-value">{grayCount}</span>
+                 </div>
+                 <div className="stat-item">
+                   <div className="color-circle red"></div>
+                   <span className="stat-value">{redCount}</span>
+                 </div>
+                 <div className="stat-item">
+                   <div className="color-circle green"></div>
+                   <span className="stat-value">{greenCount}</span>
+                 </div>
               </div>
             </div>
           </div>
