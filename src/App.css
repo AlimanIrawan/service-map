@@ -1250,4 +1250,28 @@
 
 .color-circle.gray {
   background-color: #6c757d;
+}
+
+.color-circle.blue {
+  background-color: #007bff;
+}
+
+.color-circle.orange {
+  background-color: #fd7e14;
+}
+
+.color-circle.gray-warning {
+  background-color: #6c757d;
+  position: relative;
+}
+
+.color-circle.gray-warning::after {
+  content: '!';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: red;
+  font-size: 6px;
+  font-weight: bold;
 } 

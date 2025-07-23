@@ -54,22 +54,52 @@ const createMarkerIcon = (color: string) => {
   });
 };
 
+// 创建带感叹号的灰色图标
+const createGrayIconWithWarning = () => {
+  return new L.Icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+        <circle cx="12" cy="12" r="10" fill="#6c757d" stroke="white" stroke-width="2"/>
+        <text x="12" y="16" font-family="Arial" font-size="14" font-weight="bold" fill="red" text-anchor="middle">!</text>
+      </svg>
+    `),
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+    popupAnchor: [0, -12]
+  });
+};
+
+// 创建服务人员专用图标
+const createServicePersonIcon = (color: string) => {
+  return new L.Icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+        <circle cx="12" cy="12" r="10" fill="${color}" stroke="white" stroke-width="2"/>
+      </svg>
+    `),
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+    popupAnchor: [0, -12]
+  });
+};
+
 // 预定义图标
-const greenMarkerIcon = createMarkerIcon('#28a745'); // PO Freezer - 绿色
-const redMarkerIcon = createMarkerIcon('#dc3545');   // Return Freezer - 红色
-const grayMarkerIcon = createMarkerIcon('#6c757d');  // 已完成 - 灰色
+const grayMarkerIcon = createMarkerIcon('#6c757d');          // 基础灰色
+const grayWithWarningIcon = createGrayIconWithWarning();     // 灰色带红色感叹号
+const lianaFauziaIcon = createServicePersonIcon('#007bff');  // Liana Fauzia - 蓝色
+const niarZelaIcon = createServicePersonIcon('#fd7e14');     // Niar Zela - 橙色
 
 interface MarkerData {
   outletCode: string;
   namaPemilik: string;
-  pic: string;
-  untuk: string;
-  tanggalKirimAmbil: string;
-  udahAnter: string;
-  noTeleponPemilik: string;
-  namaToko: string;
-  longitude: number;
+  mingguIniServiceBy: string;
+  tanggalTurunFreezer: string;
   latitude: number;
+  longitude: number;
+  noTeleponPemilik: string;
+  visit: string;
+  po: string;
+  buangEs: string;
 }
 
 interface LoginFormProps {
@@ -315,22 +345,27 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
   );
 };
 
-// 获取标记图标（根据状态和类型）
+// 获取标记图标（根据新的业务逻辑）
 const getMarkerIcon = (marker: MarkerData) => {
-  // 如果已完成配送/取货，显示灰色
-  if (marker.udahAnter === '✅') {
-    return grayMarkerIcon;
+  // 1. 优先检查是否有服务人员分配
+  if (marker.mingguIniServiceBy && marker.mingguIniServiceBy.trim() !== '') {
+    const servicePerson = marker.mingguIniServiceBy.trim();
+    if (servicePerson === 'Liana Fauzia') {
+      return lianaFauziaIcon;
+    } else if (servicePerson === 'Niar Zela') {
+      return niarZelaIcon;
+    }
+    // 如果是其他服务人员，暂时使用蓝色
+    return lianaFauziaIcon;
   }
   
-  // 根据业务类型选择颜色
-  if (marker.untuk === 'PO Freezer') {
-    return greenMarkerIcon;
-  } else if (marker.untuk === 'Return Freezer') {
-    return redMarkerIcon;
+  // 2. 检查是否需要服务（Visit字段）
+  if (marker.visit === 'Butuh Service!') {
+    return grayWithWarningIcon;
   }
   
-  // 默认绿色
-  return greenMarkerIcon;
+  // 3. 默认显示基础灰色
+  return grayMarkerIcon;
 };
 
 function App() {
@@ -463,15 +498,21 @@ function App() {
   const currentLayerConfig = MAP_LAYERS[currentLayer];
 
   // 统计数据
-  const poFreezerCount = markers.filter(m => m.untuk === 'PO Freezer').length;
-  const returnFreezerCount = markers.filter(m => m.untuk === 'Return Freezer').length;
-  const completedCount = markers.filter(m => m.udahAnter === '✅').length;
+  const totalCount = markers.length;
+  const grayCount = markers.filter(m => !m.mingguIniServiceBy || m.mingguIniServiceBy.trim() === '').length;
+  const grayWithWarningCount = markers.filter(m => 
+    (!m.mingguIniServiceBy || m.mingguIniServiceBy.trim() === '') && 
+    m.visit === 'Butuh Service!'
+  ).length;
+  const lianaFauziaCount = markers.filter(m => m.mingguIniServiceBy === 'Liana Fauzia').length;
+  const niarZelaCount = markers.filter(m => m.mingguIniServiceBy === 'Niar Zela').length;
 
   console.log('统计数据:', {
-    total: markers.length,
-    poFreezer: poFreezerCount,
-    returnFreezer: returnFreezerCount,
-    completed: completedCount
+    total: totalCount,
+    gray: grayCount,
+    grayWithWarning: grayWithWarningCount,
+    lianaFauzia: lianaFauziaCount,
+    niarZela: niarZelaCount
   });
 
   return (
@@ -503,20 +544,28 @@ function App() {
               <h3>📊 统计</h3>
               <div className="info-stats">
                 <div className="stat-item">
-                  <span className="stat-label">🏪</span>
-                  <span className="stat-value">{markers.length}</span>
+                  <span className="stat-label">🏪 总点数:</span>
+                  <span className="stat-value">{totalCount}</span>
                 </div>
                 <div className="stat-item">
                   <div className="color-circle gray"></div>
-                  <span className="stat-value">{completedCount}</span>
+                  <span className="stat-label">灰色点:</span>
+                  <span className="stat-value">{grayCount}</span>
                 </div>
                 <div className="stat-item">
-                  <div className="color-circle green"></div>
-                  <span className="stat-value">{poFreezerCount}</span>
+                  <div className="color-circle gray-warning"></div>
+                  <span className="stat-label">需要服务:</span>
+                  <span className="stat-value">{grayWithWarningCount}</span>
                 </div>
                 <div className="stat-item">
-                  <div className="color-circle red"></div>
-                  <span className="stat-value">{returnFreezerCount}</span>
+                  <div className="color-circle blue"></div>
+                  <span className="stat-label">Liana Fauzia:</span>
+                  <span className="stat-value">{lianaFauziaCount}</span>
+                </div>
+                <div className="stat-item">
+                  <div className="color-circle orange"></div>
+                  <span className="stat-label">Niar Zela:</span>
+                  <span className="stat-value">{niarZelaCount}</span>
                 </div>
               </div>
             </div>
@@ -578,42 +627,49 @@ function App() {
             >
               <Popup className="order-popup">
                 <div className="order-details">
-                  <h4>📋 订单详情</h4>
+                  <h4>📋 店铺详情</h4>
                   <div className="detail-row">
                     <strong>👤 店主姓名:</strong> {marker.namaPemilik}
                   </div>
                   <div className="detail-row">
-                    <strong>🏪 店铺名称:</strong> {marker.namaToko}
-                  </div>
-                  <div className="detail-row">
-                    <strong>👨‍💼 负责人:</strong> {marker.pic}
+                    <strong>🏪 门店代码:</strong> {marker.outletCode}
                   </div>
                   <div className="detail-row">
                     <strong>📱 联系电话:</strong> {marker.noTeleponPemilik}
                   </div>
                   <div className="detail-row">
-                    <strong>📋 业务类型:</strong> 
-                    <span style={{
-                      color: marker.untuk === 'PO Freezer' ? '#28a745' : '#dc3545',
-                      fontWeight: 'bold',
-                      marginLeft: '4px'
-                    }}>
-                      {marker.untuk}
-                    </span>
+                    <strong>📅 冰柜投放日期:</strong> {marker.tanggalTurunFreezer}
                   </div>
                   <div className="detail-row">
-                    <strong>📅 日期:</strong> {marker.tanggalKirimAmbil}
+                    <strong>📋 PO信息:</strong> {marker.po || '无'}
                   </div>
                   <div className="detail-row">
-                    <strong>✅ 状态:</strong> 
-                    <span style={{
-                      color: marker.udahAnter === '✅' ? '#28a745' : '#dc3545',
-                      fontWeight: 'bold',
-                      marginLeft: '4px'
-                    }}>
-                      {marker.udahAnter === '✅' ? '已完成' : '进行中'}
-                    </span>
+                    <strong>🧊 BuangEs:</strong> {marker.buangEs || '无'}
                   </div>
+                  {marker.mingguIniServiceBy && (
+                    <div className="detail-row">
+                      <strong>👨‍💼 本周服务人员:</strong> 
+                      <span style={{
+                        color: marker.mingguIniServiceBy === 'Liana Fauzia' ? '#007bff' : '#fd7e14',
+                        fontWeight: 'bold',
+                        marginLeft: '4px'
+                      }}>
+                        {marker.mingguIniServiceBy}
+                      </span>
+                    </div>
+                  )}
+                  {marker.visit === 'Butuh Service!' && (
+                    <div className="detail-row">
+                      <strong>⚠️ 状态:</strong> 
+                      <span style={{
+                        color: '#dc3545',
+                        fontWeight: 'bold',
+                        marginLeft: '4px'
+                      }}>
+                        需要服务！
+                      </span>
+                    </div>
+                  )}
                 </div>
               </Popup>
             </Marker>
@@ -632,45 +688,32 @@ const parseCSV = (csvText: string): MarkerData[] => {
   const headers = lines[0].split(',');
   const markers: MarkerData[] = [];
 
-  // 获取今天的日期 (YYYY/MM/DD 格式，使用雅加达时区)
-  const today = new Date();
-  const jakartaDate = new Date(today.toLocaleString("en-US", {timeZone: "Asia/Jakarta"}));
-  const year = jakartaDate.getFullYear();
-  const month = String(jakartaDate.getMonth() + 1).padStart(2, '0');
-  const day = String(jakartaDate.getDate()).padStart(2, '0');
-  const todayStr = `${year}/${month}/${day}`;
-  
-  console.log(`🔍 前端日期筛选: 今天=${todayStr} (雅加达时区)`);
+  console.log('📊 解析新数据格式中...');
 
   for (let i = 1; i < lines.length; i++) {
     const values = lines[i].split(',');
-    if (values.length < headers.length) continue;
+    if (values.length < 10) continue; // 至少需要10个字段
 
-    const longitude = parseFloat(values[8]);
-    const latitude = parseFloat(values[9]);
-    const tanggalKirimAmbil = values[4]?.replace(/"/g, '') || '';
-    
-    // 只显示今天的数据
-    if (!tanggalKirimAmbil.includes(todayStr)) {
-      continue;
-    }
+    const latitude = parseFloat(values[4]?.replace(/"/g, '') || '0');
+    const longitude = parseFloat(values[5]?.replace(/"/g, '') || '0');
     
     if (isNaN(latitude) || isNaN(longitude)) continue;
 
     markers.push({
       outletCode: values[0]?.replace(/"/g, '') || '',
       namaPemilik: values[1]?.replace(/"/g, '') || '',
-      pic: values[2]?.replace(/"/g, '') || '',
-      untuk: values[3]?.replace(/"/g, '') || '',
-      tanggalKirimAmbil: tanggalKirimAmbil,
-      udahAnter: values[5]?.replace(/"/g, '') || '',
-      noTeleponPemilik: values[6]?.replace(/"/g, '') || '',
-      namaToko: values[7]?.replace(/"/g, '') || '',
+      mingguIniServiceBy: values[2]?.replace(/"/g, '') || '',
+      tanggalTurunFreezer: values[3]?.replace(/"/g, '') || '',
+      latitude: latitude,
       longitude: longitude,
-      latitude: latitude
+      noTeleponPemilik: values[6]?.replace(/"/g, '') || '',
+      visit: values[7]?.replace(/"/g, '') || '',
+      po: values[8]?.replace(/"/g, '') || '',
+      buangEs: values[9]?.replace(/"/g, '') || ''
     });
   }
 
+  console.log(`📍 成功解析 ${markers.length} 个标记点`);
   return markers;
 };
 
